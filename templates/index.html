@@ -38,7 +38,7 @@
 
             // Add table headers
             const headerRow = document.createElement('tr');
-            ['Combined Info', 'Last Activity'].forEach(headerText => {
+            ['Combined Info', 'Last Activity', 'Actions'].forEach(headerText => {
                 const th = document.createElement('th');
                 th.textContent = headerText;
                 headerRow.appendChild(th);
@@ -54,7 +54,42 @@
             // Start polling for updates
             startPolling();
         }
+        function createScreenshotButton(actionsCell) {
+    const button = document.createElement('button');
+    button.textContent = 'Get Screenshot';
 
+    button.addEventListener('click', async () => {
+        button.disabled = true; // Деактивируем кнопку на время выполнения запроса
+        const originalText = button.textContent;
+        button.textContent = 'Requesting...';
+
+        try {
+            const response = await fetch('/screenshot');
+            const result = await response.json();
+            if (response.ok) {
+                button.textContent = 'Screenshot Delivered!';
+                setTimeout(() => {
+                    button.textContent = originalText; // Восстанавливаем текст кнопки
+                    button.disabled = false; // Делаем кнопку снова активной
+                }, 2000); // Устанавливаем паузу перед восстановлением
+            } else {
+                button.textContent = 'Error';
+                setTimeout(() => {
+                    button.textContent = originalText;
+                    button.disabled = false;
+                }, 2000);
+            }
+        } catch (error) {
+            button.textContent = 'Error';
+            setTimeout(() => {
+                button.textContent = originalText;
+                button.disabled = false;
+            }, 2000);
+        }
+    });
+
+    return button;
+}
         // Poll the server for updates
         async function startPolling() {
             setInterval(async () => {
@@ -72,28 +107,47 @@
 
                 // Update or add rows
                 result.data.forEach(item => {
-                    if (existingRows[item.clientMachine]) {
-                        // Update existing row
-                        const cells = existingRows[item.clientMachine].children;
-                        cells[0].textContent = item.combined; // Combined info
-                        cells[1].textContent = item.LastActivity;
-                    } else {
-                        // Add new row
-                        const row = document.createElement('tr');
-                        row.dataset.clientMachine = item.clientMachine;
+    if (existingRows[item.clientMachine]) {
+        // Обновление существующей строки
+        const cells = existingRows[item.clientMachine].children;
+        cells[0].textContent = item.combined; // Combined info
+        cells[1].textContent = item.LastActivity;
 
-                        const combinedInfoCell = document.createElement('td');
-                        combinedInfoCell.textContent = item.combined; // Combined info
+        // Восстановление кнопки после обновления строки
+        const actionsCell = cells[2];
+        const button = actionsCell.querySelector('button');
+        if (!button) {
+            const newButton = createScreenshotButton(actionsCell);
+            actionsCell.innerHTML = ''; // Очистить содержимое ячейки
+            actionsCell.appendChild(newButton);
+        }
+    } else {
+        // Добавление новой строки
+        const row = document.createElement('tr');
+        row.dataset.clientMachine = item.clientMachine;
 
-                        const lastActivityCell = document.createElement('td');
-                        lastActivityCell.textContent = item.LastActivity;
+        // Ячейка с комбинированной информацией
+        const combinedInfoCell = document.createElement('td');
+        combinedInfoCell.textContent = item.combined;
 
-                        row.appendChild(combinedInfoCell);
-                        row.appendChild(lastActivityCell);
+        // Ячейка с последней активностью
+        const lastActivityCell = document.createElement('td');
+        lastActivityCell.textContent = item.LastActivity;
 
-                        tbody.appendChild(row);
-                    }
-                });
+        // Ячейка с кнопкой
+        const actionsCell = document.createElement('td');
+        const button = createScreenshotButton(actionsCell);
+        actionsCell.appendChild(button);
+
+        // Добавление всех ячеек в строку
+        row.appendChild(combinedInfoCell);
+        row.appendChild(lastActivityCell);
+        row.appendChild(actionsCell);
+
+        // Добавление строки в таблицу
+        tbody.appendChild(row);
+    }
+});
             }, 2000); // Poll every 2 seconds
         }
     </script>
