@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Client Data Table</title>
+    <style>
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+        table, th, td {
+            border: 1px solid black;
+        }
+        th, td {
+            padding: 8px;
+            text-align: left;
+        }
+    </style>
+</head>
+<body>
+    <h1>Client Data Table</h1>
+    <button id="spawn-button" onclick="spawnTable()">Spawn Table</button>
+    <div id="table-container">
+        <!-- Table will be dynamically added here -->
+    </div>
+    <script>
+        let tableSpawned = false;
+
+        // Spawn the table with only headers
+        function spawnTable() {
+            if (tableSpawned) return;
+
+            const tableContainer = document.getElementById('table-container');
+            const table = document.createElement('table');
+            const thead = document.createElement('thead');
+            const tbody = document.createElement('tbody');
+            tbody.id = 'data-body';
+
+            // Add table headers
+            const headerRow = document.createElement('tr');
+            ['Combined Info', 'Last Activity'].forEach(headerText => {
+                const th = document.createElement('th');
+                th.textContent = headerText;
+                headerRow.appendChild(th);
+            });
+            thead.appendChild(headerRow);
+
+            table.appendChild(thead);
+            table.appendChild(tbody);
+            tableContainer.appendChild(table);
+
+            tableSpawned = true;
+
+            // Start polling for updates
+            startPolling();
+        }
+
+        // Poll the server for updates
+        async function startPolling() {
+            setInterval(async () => {
+                const response = await fetch('/data');
+                const result = await response.json();
+
+                const tbody = document.getElementById('data-body');
+                const existingRows = {};
+
+                // Map existing rows for quick lookup
+                Array.from(tbody.children).forEach(row => {
+                    const clientMachine = row.dataset.clientMachine;
+                    if (clientMachine) existingRows[clientMachine] = row;
+                });
+
+                // Update or add rows
+                result.data.forEach(item => {
+                    if (existingRows[item.clientMachine]) {
+                        // Update existing row
+                        const cells = existingRows[item.clientMachine].children;
+                        cells[0].textContent = item.combined; // Combined info
+                        cells[1].textContent = item.LastActivity;
+                    } else {
+                        // Add new row
+                        const row = document.createElement('tr');
+                        row.dataset.clientMachine = item.clientMachine;
+
+                        const combinedInfoCell = document.createElement('td');
+                        combinedInfoCell.textContent = item.combined; // Combined info
+
+                        const lastActivityCell = document.createElement('td');
+                        lastActivityCell.textContent = item.LastActivity;
+
+                        row.appendChild(combinedInfoCell);
+                        row.appendChild(lastActivityCell);
+
+                        tbody.appendChild(row);
+                    }
+                });
+            }, 2000); // Poll every 2 seconds
+        }
+    </script>
+</body>
+</html>
